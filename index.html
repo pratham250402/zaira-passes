@@ -35,8 +35,13 @@ table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px;borde
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--maroon);color:#fff;padding:12px 20px;border-radius:10px;z-index:9;max-width:90%}
 .toast.err{background:#a3262a}.hide{display:none}.foot{text-align:center;color:#8a7a70;font-size:13px;padding-bottom:30px}
 @media(prefers-reduced-motion:no-preference){.hero h1{animation:glow 2.4s ease-out}@keyframes glow{from{opacity:0;letter-spacing:8px}}}
+.hero{position:relative}.adminbtn{position:absolute;top:12px;right:12px;border:1.5px solid var(--gold);color:var(--gold);padding:8px 16px;border-radius:22px;text-decoration:none;font-weight:700;font-size:14px;background:#ffffff14}
+.tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}.tabs button{flex:0 0 auto;white-space:nowrap}
+input,select,textarea{font-size:16px}select{margin:4px 0}
+@media(max-width:600px){.wrap{padding:0 12px}.card{padding:16px}button{min-height:46px}.row>*{flex:1 1 100%}.grid{grid-template-columns:1fr}
+.pass{flex-direction:column;text-align:center}.pass .info{flex:1 1 auto}.hero{padding-top:58px}table{font-size:13px}td,th{padding:6px 4px}}
 </style></head><body>
-<div class="hero"><p>Members' Navratri Pass Desk</p><h1>Om Zaira Diamond</h1><p>Book your garba pass, show the QR at our showroom, and collect it.</p></div>
+<div class="hero"><a href="#" class="adminbtn" id="sw2" onclick="swap();return false">Admin</a><p>Members' Navratri Pass Desk</p><h1>Om Zaira Diamond</h1><p>Book your garba pass, show the QR at our showroom, and collect it.</p></div>
 <div class="wrap">
 
 <!-- MEMBER -->
@@ -57,7 +62,7 @@ table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px;borde
  <div id="aBody" class="hide">
   <div class="tabs"><button class="on" onclick="tab(0,this)">Events</button><button onclick="tab(1,this)">Members</button><button onclick="tab(2,this)">Bookings</button><button onclick="tab(3,this)">Verify at showroom</button></div>
   <div class="card tabp" id="t0"><h2>Add Navratri event</h2>
-   <div class="row"><input id="en" placeholder="Event name (e.g. PYC Navratri)"><input id="ev" placeholder="Venue"><input id="ed" type="date"><input id="eq" type="number" min="1" placeholder="Total passes"></div>
+   <div class="row"><input id="en" placeholder="Event name (e.g. PYC Navratri)"><input id="ev" placeholder="Venue"><input id="ed" type="date"><input id="eq" type="number" min="1" placeholder="Total passes"><input id="es" style="flex:1 1 100%" placeholder="Pickup time slots, comma separated (e.g. 12 Oct 11AM-1PM, 12 Oct 1PM-3PM)"><input id="ec" type="number" min="0" placeholder="Passes per slot (optional)"></div>
    <p><button onclick="addEvent()">Add event</button></p><div id="aEvents"></div></div>
   <div class="card tabp hide" id="t1"><h2>Members <span class="meta" id="mc"></span></h2>
    <p class="meta">Paste one per line: <b>memberId,mobile,name</b>. Duplicates are skipped.</p>
@@ -83,13 +88,15 @@ async function post(o){try{const r=await fetch(API,{method:'POST',body:JSON.stri
  catch(e){return{error:'Cannot reach the server. Check internet and the Web App URL.'}}}
 async function run(b,fn){const t=b.textContent;b.disabled=true;b.textContent='Please wait…';try{await fn()}finally{b.disabled=false;b.textContent=t}}
 async function loadEvents(){try{const r=await(await fetch(API)).json();if(r.events){evs=r.events;LS.set('evs',evs);drawEvents()}}catch(e){if(!evs.length)$('events').innerHTML='<div class="meta">Could not load events. Check your connection and refresh.</div>'}}
+const SEL={};
 function drawEvents(){
  if(!evs.length){$('events').innerHTML='<div class="meta">No events open yet. Check back soon.</div>';return}
  $('events').innerHTML=evs.map(e=>{const left=e.total-e.booked,pct=Math.min(100,e.booked/e.total*100);
   const mine=me&&me.passes.some(p=>p.eventId===e.id);
   const tag=e.soldOut?'<span class="tag sold">Sold out</span>':left<=50?`<span class="tag few">Only ${left} left</span>`:`<span class="tag ok">${left} passes left</span>`;
+  const sl=(!e.soldOut&&!mine&&e.slots&&e.slots.length)?`<select aria-label="Pickup time slot" onchange="SEL['${e.id}']=this.value"><option value="">Select pickup time slot</option>${e.slots.map(s=>`<option value="${esc(s.l)}" ${s.full?'disabled':''} ${SEL[e.id]===s.l?'selected':''}>${esc(s.l)}${s.full?' – Full':s.left!==null?' ('+s.left+' left)':''}</option>`).join('')}</select>`:'';
   return `<div class="card ev ${e.soldOut?'out':''}"><h3>${esc(e.name)}</h3><div class="meta">📍 ${esc(e.venue)}<br>📅 ${esc(e.date)}</div>
-  <div class="bar"><i style="width:${pct}%"></i></div><div>${tag}</div>
+  <div class="bar"><i style="width:${pct}%"></i></div><div>${tag}</div>${sl}
   <button ${e.soldOut||mine?'disabled':''} onclick="book('${e.id}',this)">${mine?'Already booked':e.soldOut?'Sold out':me?'Book my pass':'Log in to book'}</button></div>`}).join('')}
 function showMember(){$('loginCard').classList.add('hide');$('welcome').classList.remove('hide');$('hi').textContent='Jai Mataji, '+me.name+' ('+me.memberId+')';drawPasses();drawEvents()}
 async function login(){const id=$('mid').value.trim(),m=$('mob').value.trim();if(!id||m.length<10)return toast('Enter your Member ID and 10-digit mobile number',1);
@@ -97,12 +104,13 @@ async function login(){const id=$('mid').value.trim(),m=$('mob').value.trim();if
  me=r;LS.set('me',{memberId:r.memberId,mobile:r.mobile,name:r.name,passes:r.passes});showMember()}
 function logout(){me=null;LS.del('me');$('loginCard').classList.remove('hide');$('welcome').classList.add('hide');$('myPasses').classList.add('hide');drawEvents()}
 async function book(id,btn){if(!me)return window.scrollTo({top:0,behavior:'smooth'}),toast('Please log in with your Member ID first',1);
+ const ev0=evs.find(x=>x.id===id),slot=SEL[id]||'';if(ev0&&ev0.slots&&ev0.slots.length&&!slot)return toast('Please select a pickup time slot first',1);
  btn.disabled=true;btn.textContent='Booking…';
- const r=await post({action:'book',memberId:me.memberId,mobile:me.mobile,eventId:id});
+ const r=await post({action:'book',memberId:me.memberId,mobile:me.mobile,eventId:id,slot});
  if(r.error){toast(r.error,1)}else{me.passes.push(r.pass);LS.set('me',me);const e=evs.find(x=>x.id===id);if(e){e.booked++;e.soldOut=e.booked>=e.total}toast('Pass booked! Download your QR below.');drawPasses()}
  drawEvents();loadEvents()}
 function drawPasses(){const box=$('myPasses');if(!me||!me.passes.length){box.classList.add('hide');return}
- box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ID ${esc(p.memberId)}<br>Code: <b>${esc(p.code)}</b></div>
+ box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ID ${esc(p.memberId)}<br>${p.slot?'<br>Pickup: <b>'+esc(p.slot)+'</b>':''}<br>Code: <b>${esc(p.code)}</b></div>
  <p><button class="sm" onclick="pdf(${i})">Download QR as PDF</button></p></div></div>`).join('');
  me.passes.forEach((p,i)=>new QRCode($('q'+i),{text:p.code,width:110,height:110,colorDark:'#4a0d1f'}))}
 function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),W=148;
@@ -113,20 +121,21 @@ function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),
   d.setTextColor(74,13,31);d.setFont('helvetica','bold');d.setFontSize(18);d.text(p.eventName,W/2,56,{align:'center'});
   d.addImage(img,'PNG',(W-70)/2,66,70,70);d.setFontSize(15);d.text(p.code,W/2,146,{align:'center'});
   d.setFont('helvetica','normal');d.setFontSize(12);d.setTextColor(60);d.text(p.name+'  |  Member ID: '+p.memberId,W/2,156,{align:'center'});
+  if(p.slot){d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(122,21,48);d.text('Pickup slot: '+p.slot,W/2,166,{align:'center'});d.setTextColor(60);d.setFont('helvetica','normal')}
   d.setFontSize(10);d.text('Show this QR at the Om Zaira Diamond showroom to collect your physical pass.',W/2,176,{align:'center',maxWidth:120});
   d.save('Navratri-Pass-'+p.code+'.pdf')},150)}
 
 // ---- admin ----
-function swap(){const a=!$('admin').classList.contains('hide');$('admin').classList.toggle('hide',a);$('member').classList.toggle('hide',!a);$('sw').textContent=a?'Admin':'Member view'}
+function swap(){const a=!$('admin').classList.contains('hide');$('admin').classList.toggle('hide',a);$('member').classList.toggle('hide',!a);$('sw').textContent=$('sw2').textContent=a?'Admin':'Member view'}
 function tab(n,b){document.querySelectorAll('.tabp').forEach((x,i)=>x.classList.toggle('hide',i!==n));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
 async function adminLoad(){if(!APASS)APASS=$('apass').value;const r=await post({action:'adminData',pass:APASS});
  if(r.error){APASS='';return toast(r.error,1)}AD=r;$('aLogin').classList.add('hide');$('aBody').classList.remove('hide');$('mc').textContent='('+r.members+' registered)';
- $('aEvents').innerHTML='<table><tr><th>Event</th><th>Booked</th><th></th></tr>'+r.events.map(e=>`<tr><td><b>${esc(e.name)}</b><br><span class="meta">${esc(e.venue)} · ${esc(e.date)}</span></td><td>${e.booked}/${e.total}${e.soldOut?' <span class="tag sold">Sold out</span>':''}</td>
+ $('aEvents').innerHTML='<table><tr><th>Event</th><th>Booked</th><th></th></tr>'+r.events.map(e=>`<tr><td><b>${esc(e.name)}</b><br><span class="meta">${esc(e.venue)} · ${esc(e.date)}${e.slots.length?'<br>'+e.slots.map(x=>esc(x.l)+' ('+x.booked+(e.slotCap?'/'+e.slotCap:'')+')').join('<br>'):''}</span></td><td>${e.booked}/${e.total}${e.soldOut?' <span class="tag sold">Sold out</span>':''}</td>
  <td><button class="sm alt" onclick="toggle('${e.id}')">${e.active?'Hide':'Show'}</button></td></tr>`).join('')+'</table>';renderB()}
 function renderB(){if(!AD)return;const q=$('bs').value.toLowerCase();
- $('bl').innerHTML='<table><tr><th>Code</th><th>Member</th><th>Event</th><th>Given</th></tr>'+AD.bookings.filter(b=>Object.values(b).join(' ').toLowerCase().includes(q)).map(b=>`<tr><td>${esc(b.code)}</td><td>${esc(b.name)}<br><span class="meta">${esc(b.mobile)}</span></td><td>${esc(b.eventName)}</td><td>${b.redeemed==='YES'?'✔':'–'}</td></tr>`).join('')+'</table>'}
-async function addEvent(){const o={action:'addEvent',pass:APASS,name:$('en').value,venue:$('ev').value,date:$('ed').value,total:+$('eq').value};
- if(!o.name||!o.total)return toast('Enter event name and number of passes',1);await post(o);toast('Event added');['en','ev','ed','eq'].forEach(i=>$(i).value='');adminLoad();loadEvents()}
+ $('bl').innerHTML='<table><tr><th>Code</th><th>Member</th><th>Event / slot</th><th>Given</th></tr>'+AD.bookings.filter(b=>Object.values(b).join(' ').toLowerCase().includes(q)).map(b=>`<tr><td>${esc(b.code)}</td><td>${esc(b.name)}<br><span class="meta">${esc(b.mobile)}</span></td><td>${esc(b.eventName)}<br><span class="meta">${esc(b.slot||'')}</span></td><td>${b.redeemed==='YES'?'✔':'–'}</td></tr>`).join('')+'</table>'}
+async function addEvent(){const o={action:'addEvent',pass:APASS,name:$('en').value,venue:$('ev').value,date:$('ed').value,total:+$('eq').value,slots:$('es').value,slotCap:+$('ec').value||0};
+ if(!o.name||!o.total)return toast('Enter event name and number of passes',1);await post(o);toast('Event added');['en','ev','ed','eq','es','ec'].forEach(i=>$(i).value='');adminLoad();loadEvents()}
 async function toggle(id){await post({action:'toggleEvent',pass:APASS,id});adminLoad();loadEvents()}
 async function addMembers(){const r=await post({action:'addMembers',pass:APASS,text:$('mt').value});toast(r.added+' members added');$('mt').value='';adminLoad()}
 async function redeem(){const r=await post({action:'redeem',pass:APASS,code:$('vc').value});
