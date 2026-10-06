@@ -42,26 +42,26 @@ table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px;borde
 <!-- MEMBER -->
 <div id="member">
  <div class="card" id="loginCard"><h2>Member login</h2>
-  <div class="row"><input id="mob" type="tel" inputmode="numeric" maxlength="10" placeholder="Registered mobile number">
-  <button onclick="login()">View passes</button></div></div>
+  <div class="row"><input id="mid" placeholder="Member ID (e.g. OZD001)" autocapitalize="characters"><input id="mob" type="tel" inputmode="numeric" maxlength="10" placeholder="Registered mobile number">
+  <button onclick="run(this,login)">View passes</button></div></div>
  <div class="card hide" id="welcome"><div class="row" style="align-items:center"><div><b id="hi"></b><div class="meta">Choose a Navratri below. One pass per event.</div></div>
   <button class="sm alt" style="flex:0 0 auto" onclick="logout()">Log out</button></div></div>
  <div class="card hide" id="myPasses"><h2>My passes</h2><div id="passList"></div></div>
  <h2 style="margin-top:6px">Navratri events</h2>
- <div class="grid" id="events"><div class="meta">Loading events…</div></div>
+ <div class="grid" id="events"><div class="card ev"><div class="meta">Loading events…</div></div></div>
 </div>
 
 <!-- ADMIN -->
 <div id="admin" class="hide">
- <div class="card" id="aLogin"><h2>Admin login</h2><div class="row"><input id="apass" type="password" placeholder="Admin password"><button onclick="adminLoad()">Open dashboard</button></div></div>
+ <div class="card" id="aLogin"><h2>Admin login</h2><div class="row"><input id="apass" type="password" placeholder="Admin password"><button onclick="run(this,adminLoad)">Open dashboard</button></div></div>
  <div id="aBody" class="hide">
   <div class="tabs"><button class="on" onclick="tab(0,this)">Events</button><button onclick="tab(1,this)">Members</button><button onclick="tab(2,this)">Bookings</button><button onclick="tab(3,this)">Verify at showroom</button></div>
   <div class="card tabp" id="t0"><h2>Add Navratri event</h2>
    <div class="row"><input id="en" placeholder="Event name (e.g. PYC Navratri)"><input id="ev" placeholder="Venue"><input id="ed" type="date"><input id="eq" type="number" min="1" placeholder="Total passes"></div>
    <p><button onclick="addEvent()">Add event</button></p><div id="aEvents"></div></div>
   <div class="card tabp hide" id="t1"><h2>Members <span class="meta" id="mc"></span></h2>
-   <p class="meta">Paste one per line: <b>mobile,name</b>. Duplicates are skipped.</p>
-   <textarea id="mt" rows="6" placeholder="9876543210,Ramesh Patel"></textarea><p><button onclick="addMembers()">Add members</button></p></div>
+   <p class="meta">Paste one per line: <b>memberId,mobile,name</b>. Duplicates are skipped.</p>
+   <textarea id="mt" rows="6" placeholder="OZD001,9876543210,Ramesh Patel"></textarea><p><button onclick="addMembers()">Add members</button></p></div>
   <div class="card tabp hide" id="t2"><h2>Bookings</h2><input id="bs" placeholder="Search name, mobile, code or event" oninput="renderB()" style="margin-bottom:10px"><div style="overflow-x:auto" id="bl"></div></div>
   <div class="card tabp hide" id="t3"><h2>Verify pass</h2><p class="meta">Type or scan (USB scanner types it) the pass code, then hand over the pass.</p>
    <div class="row"><input id="vc" placeholder="OZD-XXXXXXXX"><button onclick="redeem()">Mark as given</button></div><p id="vr"></p></div>
@@ -72,14 +72,17 @@ table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:8px;borde
 <div id="toast" class="toast hide"></div>
 
 <script>
-// ====== PASTE YOUR APPS SCRIPT WEB APP URL HERE ======
-const API='https://script.google.com/macros/s/AKfycbz_8dBOCBW4a75ok6PIglw8u6029bP2_JL0tHCb2Oy6L5k90gen-ha5_W55GMB4RPvc/exec';
+const API='PASTE_WEB_APP_URL_HERE';
 let me=null,APASS='',AD=null,evs=[];
 const $=i=>document.getElementById(i);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function toast(m,e){const t=$('toast');t.textContent=m;t.className='toast'+(e?' err':'');setTimeout(()=>t.className='toast hide',3500)}
-async function post(o){const r=await fetch(API,{method:'POST',body:JSON.stringify(o)});return r.json()}
-async function loadEvents(){try{const r=await(await fetch(API)).json();evs=r.events;drawEvents()}catch(e){$('events').innerHTML='<div class="meta">Could not load events. Check your connection and refresh.</div>'}}
+const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+function toast(m,e){const t=$('toast');t.textContent=m;t.className='toast'+(e?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast hide',4500)}
+async function post(o){try{const r=await fetch(API,{method:'POST',body:JSON.stringify(o)});const t=await r.text();
+ try{return JSON.parse(t)}catch(e){return{error:'Server reply not understood. In Apps Script: Deploy > Manage deployments > Edit > New version, access = Anyone.'}}}
+ catch(e){return{error:'Cannot reach the server. Check internet and the Web App URL.'}}}
+async function run(b,fn){const t=b.textContent;b.disabled=true;b.textContent='Please wait…';try{await fn()}finally{b.disabled=false;b.textContent=t}}
+async function loadEvents(){try{const r=await(await fetch(API)).json();if(r.events){evs=r.events;LS.set('evs',evs);drawEvents()}}catch(e){if(!evs.length)$('events').innerHTML='<div class="meta">Could not load events. Check your connection and refresh.</div>'}}
 function drawEvents(){
  if(!evs.length){$('events').innerHTML='<div class="meta">No events open yet. Check back soon.</div>';return}
  $('events').innerHTML=evs.map(e=>{const left=e.total-e.booked,pct=Math.min(100,e.booked/e.total*100);
@@ -88,17 +91,18 @@ function drawEvents(){
   return `<div class="card ev ${e.soldOut?'out':''}"><h3>${esc(e.name)}</h3><div class="meta">📍 ${esc(e.venue)}<br>📅 ${esc(e.date)}</div>
   <div class="bar"><i style="width:${pct}%"></i></div><div>${tag}</div>
   <button ${e.soldOut||mine?'disabled':''} onclick="book('${e.id}',this)">${mine?'Already booked':e.soldOut?'Sold out':me?'Book my pass':'Log in to book'}</button></div>`}).join('')}
-async function login(){const m=$('mob').value.trim();if(m.length<10)return toast('Enter your 10-digit mobile number',1);
- const r=await post({action:'login',mobile:m});if(r.error)return toast(r.error,1);
- me=r;$('loginCard').classList.add('hide');$('welcome').classList.remove('hide');$('hi').textContent='Jai Mataji, '+r.name+'!';drawPasses();drawEvents()}
-function logout(){me=null;$('loginCard').classList.remove('hide');$('welcome').classList.add('hide');$('myPasses').classList.add('hide');drawEvents()}
-async function book(id,btn){if(!me)return window.scrollTo({top:0,behavior:'smooth'}),toast('Please log in with your mobile number first',1);
+function showMember(){$('loginCard').classList.add('hide');$('welcome').classList.remove('hide');$('hi').textContent='Jai Mataji, '+me.name+' ('+me.memberId+')';drawPasses();drawEvents()}
+async function login(){const id=$('mid').value.trim(),m=$('mob').value.trim();if(!id||m.length<10)return toast('Enter your Member ID and 10-digit mobile number',1);
+ const r=await post({action:'login',memberId:id,mobile:m});if(r.error)return toast(r.error,1);
+ me=r;LS.set('me',{memberId:r.memberId,mobile:r.mobile,name:r.name,passes:r.passes});showMember()}
+function logout(){me=null;LS.del('me');$('loginCard').classList.remove('hide');$('welcome').classList.add('hide');$('myPasses').classList.add('hide');drawEvents()}
+async function book(id,btn){if(!me)return window.scrollTo({top:0,behavior:'smooth'}),toast('Please log in with your Member ID first',1);
  btn.disabled=true;btn.textContent='Booking…';
- const r=await post({action:'book',mobile:me.mobile,eventId:id});
- if(r.error){toast(r.error,1)}else{me.passes.push(r.pass);toast('Pass booked! Download your QR below.');drawPasses()}
- loadEvents()}
+ const r=await post({action:'book',memberId:me.memberId,mobile:me.mobile,eventId:id});
+ if(r.error){toast(r.error,1)}else{me.passes.push(r.pass);LS.set('me',me);const e=evs.find(x=>x.id===id);if(e){e.booked++;e.soldOut=e.booked>=e.total}toast('Pass booked! Download your QR below.');drawPasses()}
+ drawEvents();loadEvents()}
 function drawPasses(){const box=$('myPasses');if(!me||!me.passes.length){box.classList.add('hide');return}
- box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ${esc(p.mobile)}<br>Code: <b>${esc(p.code)}</b></div>
+ box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ID ${esc(p.memberId)}<br>Code: <b>${esc(p.code)}</b></div>
  <p><button class="sm" onclick="pdf(${i})">Download QR as PDF</button></p></div></div>`).join('');
  me.passes.forEach((p,i)=>new QRCode($('q'+i),{text:p.code,width:110,height:110,colorDark:'#4a0d1f'}))}
 function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),W=148;
@@ -108,7 +112,7 @@ function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),
   d.setFontSize(12);d.setFont('helvetica','normal');d.text('NAVRATRI MEMBER PASS',W/2,28,{align:'center'});
   d.setTextColor(74,13,31);d.setFont('helvetica','bold');d.setFontSize(18);d.text(p.eventName,W/2,56,{align:'center'});
   d.addImage(img,'PNG',(W-70)/2,66,70,70);d.setFontSize(15);d.text(p.code,W/2,146,{align:'center'});
-  d.setFont('helvetica','normal');d.setFontSize(12);d.setTextColor(60);d.text(p.name+'  |  '+p.mobile,W/2,156,{align:'center'});
+  d.setFont('helvetica','normal');d.setFontSize(12);d.setTextColor(60);d.text(p.name+'  |  Member ID: '+p.memberId,W/2,156,{align:'center'});
   d.setFontSize(10);d.text('Show this QR at the Om Zaira Diamond showroom to collect your physical pass.',W/2,176,{align:'center',maxWidth:120});
   d.save('Navratri-Pass-'+p.code+'.pdf')},150)}
 
@@ -127,5 +131,7 @@ async function toggle(id){await post({action:'toggleEvent',pass:APASS,id});admin
 async function addMembers(){const r=await post({action:'addMembers',pass:APASS,text:$('mt').value});toast(r.added+' members added');$('mt').value='';adminLoad()}
 async function redeem(){const r=await post({action:'redeem',pass:APASS,code:$('vc').value});
  $('vr').innerHTML=r.ok?`<b style="color:var(--green)">✔ Valid – ${esc(r.name)} (${esc(r.event)}). Give the pass.</b>`:`<b style="color:#a3262a">✘ ${esc(r.error)}</b>`;if(r.ok){$('vc').value='';adminLoad()}}
-if(location.hash==='#admin')swap();loadEvents();setInterval(loadEvents,30000);
+evs=LS.get('evs')||[];me=LS.get('me');if(evs.length)drawEvents();if(me)showMember();
+if(location.hash==='#admin')swap();loadEvents();
+setInterval(()=>{if(!document.hidden)loadEvents()},60000);
 </script></body></html>
