@@ -4,6 +4,7 @@
 <title>Om Zaira Diamond – Navratri Passes</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Mukta:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--maroon:#4a0d1f;--wine:#7a1530;--saffron:#f28c1b;--gold:#e9b949;--ivory:#fff8ea;--ink:#2a1218;--green:#1f7a4d}
@@ -45,6 +46,9 @@ input,select,textarea{font-size:16px}select{margin:4px 0}
 .card{overflow-wrap:anywhere}button,.tag{overflow-wrap:normal;white-space:nowrap}td:last-child{width:1%}#aEvents,#bl{overflow-x:auto}
 @media(max-width:600px){.wrap{margin-top:-28px}.hero{padding-bottom:56px}.hero h1{letter-spacing:0;animation:none}.hero p{font-size:14px}
 .tabs{margin-left:-2px}.ev h3{font-size:24px}h2{font-size:26px}}
+#cv{width:100%;max-height:58vh;border-radius:12px;background:#000;object-fit:cover;margin-top:10px;display:block}
+.scanres{margin-top:12px;padding:16px;border-radius:12px;text-align:center;font-size:22px;font-weight:700}.scanres.ok{background:#dff3e8;color:var(--green)}.scanres.bad{background:#fde0e0;color:#a3262a}.scanres small{display:block;font-weight:400;font-size:15px;margin-top:4px}
+@media(max-width:600px){.tabs button{flex:1 1 auto;padding:10px 6px;font-size:14px;min-height:44px}}
 </style></head><body>
 <div class="hero"><a href="#" class="adminbtn" id="sw2" onclick="swap();return false">Admin</a><p>Members' Navratri Pass Desk</p><h1>Om Zaira Diamond</h1><p>Book your garba pass, show the QR at our showroom, and collect it.</p></div>
 <div class="wrap">
@@ -54,7 +58,7 @@ input,select,textarea{font-size:16px}select{margin:4px 0}
  <div class="card" id="loginCard"><h2>Member login</h2>
   <div class="row"><input id="mid" placeholder="Member ID (e.g. OZD001)" autocapitalize="characters"><input id="mob" type="tel" inputmode="numeric" maxlength="10" placeholder="Registered mobile number">
   <button onclick="run(this,login)">View passes</button></div></div>
- <div class="card hide" id="welcome"><div class="row" style="align-items:center"><div><b id="hi"></b><div class="meta">Choose a Navratri below. Book up to 5 passes per event.</div></div>
+ <div class="card hide" id="welcome"><div class="row" style="align-items:center"><div><b id="hi"></b><div class="meta">Choose a Navratri below. Up to 5 passes per day, across all events on the same date.</div></div>
   <button class="sm alt" style="flex:0 0 auto" onclick="logout()">Log out</button></div></div>
  <div class="card hide" id="myPasses"><h2>My passes</h2><div id="passList"></div></div>
  <h2 style="margin-top:6px">Navratri events</h2>
@@ -65,7 +69,7 @@ input,select,textarea{font-size:16px}select{margin:4px 0}
 <div id="admin" class="hide">
  <div class="card" id="aLogin"><h2>Admin login</h2><div class="row"><input id="apass" type="password" placeholder="Admin password"><button onclick="run(this,adminLoad)">Open dashboard</button></div></div>
  <div id="aBody" class="hide">
-  <div class="tabs"><button class="on" onclick="tab(0,this)">Events</button><button onclick="tab(1,this)">Members</button><button onclick="tab(2,this)">Bookings</button><button onclick="tab(3,this)">Verify at showroom</button></div>
+  <div class="tabs"><button class="on" onclick="tab(0,this)">Events</button><button onclick="tab(1,this)">Members</button><button onclick="tab(2,this)">Bookings</button><button onclick="tab(3,this)">📷 Scan</button></div>
   <div class="card tabp" id="t0"><h2>Add Navratri event</h2>
    <div class="row"><input id="en" placeholder="Event name (e.g. PYC Navratri)"><input id="ev" placeholder="Venue"><input id="ed" type="date"><input id="eq" type="number" min="1" placeholder="Total passes"><input id="es" style="flex:1 1 100%" placeholder="Pickup time slots, comma separated (e.g. 12 Oct 11AM-1PM, 12 Oct 1PM-3PM)"><input id="ec" type="number" min="0" placeholder="Passes per slot (optional)"></div>
    <p><button onclick="addEvent()">Add event</button></p><div id="aEvents"></div></div>
@@ -74,7 +78,7 @@ input,select,textarea{font-size:16px}select{margin:4px 0}
    <textarea id="mt" rows="6" placeholder="OZD001,9876543210,Ramesh Patel"></textarea><p><button onclick="addMembers()">Add members</button></p></div>
   <div class="card tabp hide" id="t2"><h2>Bookings</h2><input id="bs" placeholder="Search name, mobile, code or event" oninput="renderB()" style="margin-bottom:10px"><div style="overflow-x:auto" id="bl"></div></div>
   <div class="card tabp hide" id="t3"><h2>Verify pass</h2><p class="meta">Type or scan (USB scanner types it) the pass code, then hand over the pass.</p>
-   <div class="row"><input id="vc" placeholder="OZD-XXXXXXXX"><button onclick="redeem()">Mark as given</button></div><p id="vr"></p></div>
+   <div class="row"><input id="vc" placeholder="OZD-XXXXXXXX"><button onclick="redeem()">Mark as given</button></div><button id="camBtn" style="width:100%;margin-top:10px" onclick="toggleCam()">📷 Scan with phone camera</button><div id="camBox" class="hide"><video id="cv" playsinline muted></video><canvas id="cc" class="hide"></canvas></div><div id="scanRes" class="scanres hide"></div></div>
  </div>
 </div>
 <p class="foot">Om Zaira Diamond · <a href="#" id="sw" onclick="swap();return false" style="color:inherit">Admin</a></p>
@@ -97,13 +101,13 @@ const SEL={},QTY={};
 function drawEvents(){
  if(!evs.length){$('events').innerHTML='<div class="meta">No events open yet. Check back soon.</div>';return}
  $('events').innerHTML=evs.map(e=>{const left=e.total-e.booked,pct=Math.min(100,e.booked/e.total*100);
-  const mine=me&&me.passes.some(p=>p.eventId===e.id);
+  const used=me?me.passes.filter(p=>e.day&&p.day===e.day).reduce((a,p)=>a+(p.qty||1),0):0,max=e.maxDay||5,room=max-used,mine=!!me&&room<=0;
   const tag=e.soldOut?'<span class="tag sold">Sold out</span>':left<=50?`<span class="tag few">Only ${left} left</span>`:`<span class="tag ok">${left} passes left</span>`;
   const sl=(!e.soldOut&&!mine&&e.slots&&e.slots.length)?`<select aria-label="Pickup time slot" onchange="SEL['${e.id}']=this.value"><option value="">Select pickup time slot</option>${e.slots.map(s=>`<option value="${esc(s.l)}" ${s.full?'disabled':''} ${SEL[e.id]===s.l?'selected':''}>${esc(s.l)}${s.full?' – Full':s.left!==null?' ('+s.left+' left)':''}</option>`).join('')}</select>`:'';
-  const mx=Math.min(e.maxPer||5,left),qs=(!e.soldOut&&!mine&&mx>0)?`<select aria-label="Number of passes" onchange="QTY['${e.id}']=+this.value">${Array.from({length:mx},(_,k)=>`<option value="${k+1}" ${(QTY[e.id]||1)===k+1?'selected':''}>${k+1} pass${k?'es':''}</option>`).join('')}</select>`:'';
+  const mx=Math.min(room,left),qs=(!e.soldOut&&!mine&&mx>0)?`<select aria-label="Number of passes" onchange="QTY['${e.id}']=+this.value">${Array.from({length:mx},(_,k)=>`<option value="${k+1}" ${(QTY[e.id]||1)===k+1?'selected':''}>${k+1} pass${k?'es':''}</option>`).join('')}</select>`:'';
   return `<div class="card ev ${e.soldOut?'out':''}"><h3>${esc(e.name)}</h3><div class="meta">📍 ${esc(e.venue)}<br>📅 ${esc(e.date)}</div>
-  <div class="bar"><i style="width:${pct}%"></i></div><div>${tag}</div>${sl}${qs}
-  <button ${e.soldOut||mine?'disabled':''} onclick="book('${e.id}',this)">${mine?'Already booked':e.soldOut?'Sold out':me?'Book my pass':'Log in to book'}</button></div>`}).join('')}
+  <div class="bar"><i style="width:${pct}%"></i></div><div>${tag}</div>${me&&used>0?`<div class="meta">You hold ${used} of ${max} passes for this date</div>`:''}${sl}${qs}
+  <button ${e.soldOut||mine?'disabled':''} onclick="book('${e.id}',this)">${mine?'Daily limit reached':e.soldOut?'Sold out':me?'Book my pass':'Log in to book'}</button></div>`}).join('')}
 function showMember(){$('loginCard').classList.add('hide');$('welcome').classList.remove('hide');$('hi').textContent='Jai Mataji, '+me.name+' ('+me.memberId+')';drawPasses();drawEvents()}
 async function login(){const id=$('mid').value.trim(),m=$('mob').value.trim();if(!id||m.length<10)return toast('Enter your Member ID and 10-digit mobile number',1);
  const r=await post({action:'login',memberId:id,mobile:m});if(r.error)return toast(r.error,1);
@@ -116,7 +120,7 @@ async function book(id,btn){if(!me)return window.scrollTo({top:0,behavior:'smoot
  if(r.error){toast(r.error,1)}else{me.passes.push(r.pass);LS.set('me',me);const e=evs.find(x=>x.id===id);if(e){e.booked+=(r.pass.qty||1);e.soldOut=e.booked>=e.total}toast('Pass booked! Download your QR below.');drawPasses()}
  drawEvents();loadEvents()}
 function drawPasses(){const box=$('myPasses');if(!me||!me.passes.length){box.classList.add('hide');return}
- box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ID ${esc(p.memberId)}<br>Passes: <b>${p.qty||1}</b><br>${p.slot?'<br>Pickup: <b>'+esc(p.slot)+'</b>':''}<br>Code: <b>${esc(p.code)}</b></div>
+ box.classList.remove('hide');$('passList').innerHTML=me.passes.map((p,i)=>`<div class="pass"><div id="q${i}"></div><div class="info"><b>${esc(p.eventName)}</b><div class="meta">${esc(p.name)} · ID ${esc(p.memberId)}<br>Passes: <b>${p.qty||1}</b>${p.day?' · '+esc(p.day):''}<br>${p.slot?'<br>Pickup: <b>'+esc(p.slot)+'</b>':''}<br>Code: <b>${esc(p.code)}</b></div>
  <p><button class="sm" onclick="pdf(${i})">Download QR as PDF</button></p></div></div>`).join('');
  me.passes.forEach((p,i)=>new QRCode($('q'+i),{text:p.code,width:110,height:110,colorDark:'#4a0d1f'}))}
 function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),W=148;
@@ -124,7 +128,7 @@ function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),
  setTimeout(()=>{const img=tmp.querySelector('canvas').toDataURL('image/png');
   d.setFillColor(74,13,31);d.rect(0,0,W,38,'F');d.setTextColor(233,185,73);d.setFont('times','bold');d.setFontSize(24);d.text('Om Zaira Diamond',W/2,18,{align:'center'});
   d.setFontSize(12);d.setFont('helvetica','normal');d.text('NAVRATRI MEMBER PASS',W/2,28,{align:'center'});
-  d.setTextColor(74,13,31);d.setFont('helvetica','bold');d.setFontSize(18);d.text(p.eventName,W/2,56,{align:'center'});
+  d.setTextColor(74,13,31);d.setFont('helvetica','bold');d.setFontSize(18);d.text(p.eventName,W/2,56,{align:'center'});d.setFont('helvetica','normal');d.setFontSize(11);d.text(p.day||'',W/2,62,{align:'center'});d.setFont('helvetica','bold');
   d.addImage(img,'PNG',(W-70)/2,66,70,70);d.setFontSize(15);d.text(p.code,W/2,146,{align:'center'});
   d.setFont('helvetica','normal');d.setFontSize(12);d.setTextColor(60);d.text(p.name+'  |  Member ID: '+p.memberId,W/2,156,{align:'center'});
   {d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(122,21,48);d.text('Passes: '+(p.qty||1)+(p.slot?'  |  Pickup: '+p.slot:''),W/2,166,{align:'center',maxWidth:130});d.setTextColor(60);d.setFont('helvetica','normal')}
@@ -133,7 +137,7 @@ function pdf(i){const p=me.passes[i],d=new jspdf.jsPDF({unit:'mm',format:'a5'}),
 
 // ---- admin ----
 function swap(){const a=!$('admin').classList.contains('hide');$('admin').classList.toggle('hide',a);$('member').classList.toggle('hide',!a);$('sw').textContent=$('sw2').textContent=a?'Admin':'Member view'}
-function tab(n,b){document.querySelectorAll('.tabp').forEach((x,i)=>x.classList.toggle('hide',i!==n));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
+function tab(n,b){if(n!==3)stopCam();document.querySelectorAll('.tabp').forEach((x,i)=>x.classList.toggle('hide',i!==n));document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on')}
 async function adminLoad(){if(!APASS)APASS=$('apass').value;const r=await post({action:'adminData',pass:APASS});
  if(r.error){APASS='';return toast(r.error,1)}AD=r;$('aLogin').classList.add('hide');$('aBody').classList.remove('hide');$('mc').textContent='('+r.members+' registered)';
  $('aEvents').innerHTML='<table><tr><th>Event</th><th>Booked</th><th></th></tr>'+r.events.map(e=>`<tr><td><b>${esc(e.name)}</b><br><span class="meta">${esc(e.venue)} · ${esc(e.date)}${e.slots.length?'<br>'+e.slots.map(x=>esc(x.l)+' ('+x.booked+(e.slotCap?'/'+e.slotCap:'')+')').join('<br>'):''}</span></td><td>${e.booked}/${e.total}${e.soldOut?' <span class="tag sold">Sold out</span>':''}</td>
@@ -144,9 +148,30 @@ async function addEvent(){const o={action:'addEvent',pass:APASS,name:$('en').val
  if(!o.name||!o.total)return toast('Enter event name and number of passes',1);await post(o);toast('Event added');['en','ev','ed','eq','es','ec'].forEach(i=>$(i).value='');adminLoad();loadEvents()}
 async function toggle(id){await post({action:'toggleEvent',pass:APASS,id});adminLoad();loadEvents()}
 async function addMembers(){const r=await post({action:'addMembers',pass:APASS,text:$('mt').value});toast(r.added+' members added');$('mt').value='';adminLoad()}
-async function redeem(){const r=await post({action:'redeem',pass:APASS,code:$('vc').value});
- $('vr').innerHTML=r.ok?`<b style="color:var(--green)">✔ Valid – ${esc(r.name)} (${esc(r.event)}). Give ${r.qty||1} pass(es).</b>`:`<b style="color:#a3262a">✘ ${esc(r.error)}</b>`;if(r.ok){$('vc').value='';adminLoad()}}
-evs=LS.get('evs')||[];me=LS.get('me');if(evs.length)drawEvents();if(me)showMember();
+function beep(ok){try{const a=beep.c||(beep.c=new(window.AudioContext||window.webkitAudioContext)()),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=ok?880:220;g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.12:.35))}catch(e){}}
+function showScan(r){const b=$('scanRes');b.classList.remove('hide');
+ if(r.ok){b.className='scanres ok';b.innerHTML=`✔ GIVE ${r.qty} PASS${r.qty>1?'ES':''}<small>${esc(r.name)} · ${esc(r.memberId)}<br>${esc(r.event)}${r.slot?' · '+esc(r.slot):''}</small>`}
+ else{b.className='scanres bad';b.innerHTML=`✘ ${esc(r.error)}`+(r.name?`<small>${esc(r.name)} · ${esc(r.event)} · ${r.qty} pass(es)</small>`:'')}
+ beep(!!r.ok);if(navigator.vibrate)navigator.vibrate(r.ok?80:[120,60,120])}
+async function redeem(){const code=$('vc').value.trim().toUpperCase();if(!code)return;const r=await post({action:'redeem',pass:APASS,code});showScan(r);if(r.ok)$('vc').value=''}
+let stream=null,scanning=false,last='',lastT=0,det=null;
+async function toggleCam(){if(scanning)return stopCam();
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}},audio:false})}
+ catch(e){return toast('Camera blocked. Allow camera permission (page must be https).',1)}
+ if('BarcodeDetector' in window){try{det=new BarcodeDetector({formats:['qr_code']})}catch(e){det=null}}
+ if(!det&&typeof jsQR==='undefined'){stopCam();return toast('QR scanner library did not load. Refresh and try again.',1)}
+ const v=$('cv');v.srcObject=stream;await v.play();$('camBox').classList.remove('hide');$('camBtn').textContent='⏹ Stop camera';scanning=true;tick()}
+function stopCam(){scanning=false;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;$('camBox').classList.add('hide');$('camBtn').textContent='📷 Scan with phone camera'}
+async function tick(){if(!scanning)return;const v=$('cv');
+ if(v.readyState>=2&&v.videoWidth){let code='';try{
+  if(det){const r=await det.detect(v);if(r[0])code=r[0].rawValue}
+  else{const c=$('cc'),w=v.videoWidth,hh=v.videoHeight;c.width=w;c.height=hh;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,w,hh);const q=jsQR(x.getImageData(0,0,w,hh).data,w,hh,{inversionAttempts:'dontInvert'});if(q)code=q.data}}catch(e){}
+  code=(code||'').trim().toUpperCase();
+  if(code&&(code!==last||Date.now()-lastT>4000)){last=code;lastT=Date.now();
+   if(/^OZD-[A-Z0-9]{8}$/.test(code)){$('vc').value=code;showScan({error:'Checking…',name:''});showScan(await post({action:'redeem',pass:APASS,code}))}
+   else showScan({error:'Not an Om Zaira Diamond pass'})}}
+ setTimeout(tick,det?60:90)}
+evs=LS.get('evs')||[];me=LS.get('me');if(me&&me.passes.some(p=>!p.day)){me=null;LS.del('me')}if(evs.length)drawEvents();if(me)showMember();
 if(location.hash==='#admin')swap();loadEvents();
 setInterval(()=>{if(!document.hidden)loadEvents()},60000);
 </script></body></html>
